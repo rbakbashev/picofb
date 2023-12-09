@@ -1,4 +1,4 @@
-use picofb::{Event, Framebuffer, MainLoop};
+use picofb::{DrawHandle, Event, Framebuffer, MainLoop};
 
 struct MyGameState {
     pos_x: u32,
@@ -25,8 +25,8 @@ impl MainLoop for MyGameState {
 
     fn update(&mut self, _dt: f64, _time: f64) {}
 
-    fn render(&mut self, fb: &mut Framebuffer) {
-        fb.set(10, 30, 0xff0000);
+    fn render(&mut self, d: &mut DrawHandle) {
+        d.set(10, 30, 0xff0000);
     }
 }
 

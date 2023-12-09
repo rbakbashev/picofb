@@ -13,12 +13,17 @@ use sdl2_sys::*;
 pub struct Framebuffer {
     width: u32,
     height: u32,
-    pixels: &'static mut [u32],
     window: *mut SDL_Window,
     renderer: *mut SDL_Renderer,
     texture: *mut SDL_Texture,
     running: bool,
     dt: f64,
+}
+
+pub struct DrawHandle<'p> {
+    width: u32,
+    height: u32,
+    pixels: &'p mut [u32],
 }
 
 #[derive(Debug)]
@@ -30,7 +35,7 @@ pub enum Event {
 pub trait MainLoop {
     fn handle_event(&mut self, event: &Event);
     fn update(&mut self, dt: f64, time: f64);
-    fn render(&mut self, fb: &mut Framebuffer);
+    fn render(&mut self, fb: &mut DrawHandle);
 }
 
 trait CheckErr {
@@ -46,15 +51,11 @@ impl Framebuffer {
         let renderer = Self::create_renderer(window);
         let texture = Self::create_texture(renderer, w_int, h_int);
 
-        let ptr = ptr::NonNull::dangling().as_ptr();
-        let pixels = unsafe { slice::from_raw_parts_mut(ptr, 0) };
-
         let dt = 1.0 / f64::from(update_rate);
 
         Self {
             width,
             height,
-            pixels,
             window,
             renderer,
             texture,
@@ -85,23 +86,29 @@ impl Framebuffer {
         unsafe { SDL_CreateTexture(renderer, format, access, w, h) }.check_err("create texture")
     }
 
-    fn start_render(&mut self) {
-        let mut pixels: *mut u32 = ptr::null_mut();
+    fn start_render(&mut self) -> DrawHandle {
+        let mut ptr: *mut u32 = ptr::null_mut();
         let mut pitch = 0;
         let num_pixels = (self.width * self.height) as usize;
 
-        unsafe {
+        let pixels = unsafe {
             SDL_LockTexture(
                 self.texture,
                 ptr::null(),
-                ptr::addr_of_mut!(pixels).cast::<*mut c_void>(),
+                ptr::addr_of_mut!(ptr).cast::<*mut c_void>(),
                 &mut pitch,
             );
 
-            self.pixels = slice::from_raw_parts_mut(pixels, num_pixels);
-        }
+            debug_assert!(pitch / self.width as i32 == size_of::<u32>() as i32);
 
-        assert!(pitch / self.width as i32 == size_of::<u32>() as i32);
+            slice::from_raw_parts_mut(ptr, num_pixels)
+        };
+
+        DrawHandle {
+            width: self.width,
+            height: self.height,
+            pixels,
+        }
     }
 
     fn present(&self) {
@@ -166,8 +173,8 @@ impl Framebuffer {
                 break;
             }
 
-            self.start_render();
-            state.render(self);
+            let mut handle = self.start_render();
+            state.render(&mut handle);
             self.present();
         }
     }
@@ -176,6 +183,27 @@ impl Framebuffer {
         self.running = false;
     }
 
+    pub fn set_window_title(&mut self, title: &str) {
+        let cstr = CString::new(title).expect("Title contains null byte");
+
+        unsafe {
+            SDL_SetWindowTitle(self.window, cstr.as_ptr());
+        }
+    }
+}
+
+impl Drop for Framebuffer {
+    fn drop(&mut self) {
+        unsafe {
+            SDL_DestroyTexture(self.texture);
+            SDL_DestroyRenderer(self.renderer);
+            SDL_DestroyWindow(self.window);
+            SDL_Quit();
+        }
+    }
+}
+
+impl<'p> DrawHandle<'p> {
     pub fn clear(&mut self) {
         self.pixels.fill(0);
     }
@@ -196,25 +224,6 @@ impl Framebuffer {
 
     unsafe fn set_unchecked_index(&mut self, idx: usize, color: u32) {
         *self.pixels.get_unchecked_mut(idx) = color;
-    }
-
-    pub fn set_window_title(&mut self, title: &str) {
-        let cstr = CString::new(title).expect("Title contains null byte");
-
-        unsafe {
-            SDL_SetWindowTitle(self.window, cstr.as_ptr());
-        }
-    }
-}
-
-impl Drop for Framebuffer {
-    fn drop(&mut self) {
-        unsafe {
-            SDL_DestroyTexture(self.texture);
-            SDL_DestroyRenderer(self.renderer);
-            SDL_DestroyWindow(self.window);
-            SDL_Quit();
-        }
     }
 }
 
