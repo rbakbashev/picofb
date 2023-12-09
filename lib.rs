@@ -19,9 +19,6 @@ pub struct Framebuffer {
     texture: *mut SDL_Texture,
     running: bool,
     dt: f64,
-    handle_event: HandleEventCb,
-    update: UpdateCb,
-    render: RenderCb,
 }
 
 #[derive(Debug)]
@@ -30,24 +27,18 @@ pub enum Event {
     KeyRelease(Key),
 }
 
-pub type HandleEventCb = fn(&Event);
-pub type UpdateCb = fn(f64, f64);
-pub type RenderCb = fn(&mut Framebuffer);
+pub trait MainLoop {
+    fn handle_event(&mut self, event: &Event);
+    fn update(&mut self, dt: f64, time: f64);
+    fn render(&mut self, fb: &mut Framebuffer);
+}
 
 trait CheckErr {
     fn check_err(self, action: &'static str) -> Self;
 }
 
 impl Framebuffer {
-    pub fn new(
-        width: u32,
-        height: u32,
-        title: &'static str,
-        update_rate: i16,
-        handle_event: HandleEventCb,
-        update: UpdateCb,
-        render: RenderCb,
-    ) -> Self {
+    pub fn new(width: u32, height: u32, title: &'static str, update_rate: i16) -> Self {
         let w_int = width as c_int;
         let h_int = height as c_int;
 
@@ -69,9 +60,6 @@ impl Framebuffer {
             texture,
             running: true,
             dt,
-            handle_event,
-            update,
-            render,
         }
     }
 
@@ -87,14 +75,14 @@ impl Framebuffer {
     fn create_renderer(window: *mut SDL_Window) -> *mut SDL_Renderer {
         let flags = SDL_RendererFlags::SDL_RENDERER_ACCELERATED as u32;
 
-        unsafe { SDL_CreateRenderer(window, -1, flags).check_err("Create renderer") }
+        unsafe { SDL_CreateRenderer(window, -1, flags) }.check_err("Create renderer")
     }
 
     fn create_texture(renderer: *mut SDL_Renderer, w: c_int, h: c_int) -> *mut SDL_Texture {
         let format = SDL_PixelFormatEnum::SDL_PIXELFORMAT_ARGB8888 as u32;
         let access = SDL_TextureAccess::SDL_TEXTUREACCESS_STREAMING as i32;
 
-        unsafe { SDL_CreateTexture(renderer, format, access, w, h).check_err("create texture") }
+        unsafe { SDL_CreateTexture(renderer, format, access, w, h) }.check_err("create texture")
     }
 
     fn start_render(&mut self) {
@@ -124,7 +112,7 @@ impl Framebuffer {
         }
     }
 
-    fn poll_events(&mut self) {
+    fn poll_events(&mut self, state: &mut impl MainLoop) {
         let mut event_ptr = MaybeUninit::<SDL_Event>::uninit();
 
         loop {
@@ -141,12 +129,12 @@ impl Framebuffer {
                     SDL_EventType::SDL_KEYDOWN => {
                         let key = std::mem::transmute(event.key.keysym.sym);
                         let event = Event::KeyPress(key);
-                        (self.handle_event)(&event);
+                        state.handle_event(&event);
                     }
                     SDL_EventType::SDL_KEYUP => {
                         let key = std::mem::transmute(event.key.keysym.sym);
                         let event = Event::KeyRelease(key);
-                        (self.handle_event)(&event);
+                        state.handle_event(&event);
                     }
                     SDL_EventType::SDL_QUIT => self.close(),
                     _ => (),
@@ -160,27 +148,26 @@ impl Framebuffer {
         f64::from(ms) / 1000.0
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self, state: &mut impl MainLoop) {
         let mut current_time = Self::current_time_seconds();
 
         while self.running {
-            self.poll_events();
+            self.poll_events(state);
 
             let real_time = Self::current_time_seconds();
 
             while current_time < real_time {
                 current_time += self.dt;
 
-                (self.update)(self.dt, current_time);
+                state.update(self.dt, current_time);
             }
 
-            // This can be set from callbacks, especially from handle events
             if !self.running {
                 break;
             }
 
             self.start_render();
-            (self.render)(self);
+            state.render(self);
             self.present();
         }
     }
