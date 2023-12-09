@@ -1,3 +1,7 @@
+pub mod key;
+
+pub use crate::key::Key;
+
 use std::ffi::{c_int, c_void, CStr, CString};
 use std::mem::{size_of, MaybeUninit};
 use std::ptr;
@@ -15,10 +19,18 @@ pub struct Framebuffer {
     texture: *mut SDL_Texture,
     running: bool,
     dt: f64,
+    handle_event: HandleEventCb,
     update: UpdateCb,
     render: RenderCb,
 }
 
+#[derive(Debug)]
+pub enum Event {
+    KeyPress(Key),
+    KeyRelease(Key),
+}
+
+pub type HandleEventCb = fn(&Event);
 pub type UpdateCb = fn(f64, f64);
 pub type RenderCb = fn(&mut Framebuffer);
 
@@ -32,6 +44,7 @@ impl Framebuffer {
         height: u32,
         title: &'static str,
         update_rate: i16,
+        handle_event: HandleEventCb,
         update: UpdateCb,
         render: RenderCb,
     ) -> Self {
@@ -56,6 +69,7 @@ impl Framebuffer {
             texture,
             running: true,
             dt,
+            handle_event,
             update,
             render,
         }
@@ -114,12 +128,30 @@ impl Framebuffer {
         let mut event_ptr = MaybeUninit::<SDL_Event>::uninit();
 
         loop {
-            let _event = unsafe {
+            unsafe {
                 if SDL_PollEvent(event_ptr.as_mut_ptr()) == 0 {
                     break;
                 }
-                event_ptr.assume_init()
-            };
+
+                let event = event_ptr.assume_init();
+
+                let type_: SDL_EventType = std::mem::transmute(event.type_);
+
+                match type_ {
+                    SDL_EventType::SDL_KEYDOWN => {
+                        let key = std::mem::transmute(event.key.keysym.sym);
+                        let event = Event::KeyPress(key);
+                        (self.handle_event)(&event);
+                    }
+                    SDL_EventType::SDL_KEYUP => {
+                        let key = std::mem::transmute(event.key.keysym.sym);
+                        let event = Event::KeyRelease(key);
+                        (self.handle_event)(&event);
+                    }
+                    SDL_EventType::SDL_QUIT => self.close(),
+                    _ => (),
+                }
+            }
         }
     }
 
