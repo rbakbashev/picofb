@@ -33,9 +33,9 @@ pub enum Event {
 }
 
 pub trait MainLoop {
-    fn handle_event(&mut self, event: &Event);
-    fn update(&mut self, dt: f64, time: f64);
-    fn render(&mut self, fb: &mut DrawHandle);
+    fn handle_event(&mut self, d: &mut Framebuffer, event: &Event);
+    fn update(&mut self, d: &mut Framebuffer, dt: f64, time: f64);
+    fn render(&mut self, d: &mut DrawHandle);
 }
 
 trait CheckErr {
@@ -136,14 +136,14 @@ impl Framebuffer {
                     SDL_EventType::SDL_KEYDOWN => {
                         let key = std::mem::transmute(event.key.keysym.sym);
                         let event = Event::KeyPress(key);
-                        state.handle_event(&event);
+                        state.handle_event(self, &event);
                     }
                     SDL_EventType::SDL_KEYUP => {
                         let key = std::mem::transmute(event.key.keysym.sym);
                         let event = Event::KeyRelease(key);
-                        state.handle_event(&event);
+                        state.handle_event(self, &event);
                     }
-                    SDL_EventType::SDL_QUIT => self.close(),
+                    SDL_EventType::SDL_QUIT => self.running = false,
                     _ => (),
                 }
             }
@@ -166,7 +166,7 @@ impl Framebuffer {
             while current_time < real_time {
                 current_time += self.dt;
 
-                state.update(self.dt, current_time);
+                state.update(self, self.dt, current_time);
             }
 
             if !self.running {
@@ -177,6 +177,14 @@ impl Framebuffer {
             state.render(&mut handle);
             self.present();
         }
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
     }
 
     pub fn close(&mut self) {
@@ -224,6 +232,14 @@ impl<'p> DrawHandle<'p> {
 
     unsafe fn set_unchecked_index(&mut self, idx: usize, color: u32) {
         *self.pixels.get_unchecked_mut(idx) = color;
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
     }
 }
 
