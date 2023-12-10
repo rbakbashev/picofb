@@ -66,7 +66,7 @@ impl Framebuffer {
 
     fn create_window(w: c_int, h: c_int, title: &'static str) -> *mut SDL_Window {
         let cstr = CString::new(title).expect("Title contains null byte");
-        let any_pos = SDL_WINDOWPOS_UNDEFINED_MASK as i32;
+        let any_pos = SDL_WINDOWPOS_UNDEFINED_MASK as c_int;
         let flags = SDL_WindowFlags::SDL_WINDOW_SHOWN as u32;
 
         unsafe { SDL_CreateWindow(cstr.as_ptr(), any_pos, any_pos, w, h, flags) }
@@ -81,7 +81,7 @@ impl Framebuffer {
 
     fn create_texture(renderer: *mut SDL_Renderer, w: c_int, h: c_int) -> *mut SDL_Texture {
         let format = SDL_PixelFormatEnum::SDL_PIXELFORMAT_ARGB8888 as u32;
-        let access = SDL_TextureAccess::SDL_TEXTUREACCESS_STREAMING as i32;
+        let access = SDL_TextureAccess::SDL_TEXTUREACCESS_STREAMING as c_int;
 
         unsafe { SDL_CreateTexture(renderer, format, access, w, h) }.check_err("create texture")
     }
