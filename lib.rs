@@ -129,7 +129,6 @@ impl Framebuffer {
                 }
 
                 let event = event_ptr.assume_init();
-
                 let type_: SDL_EventType = std::mem::transmute(event.type_);
 
                 match type_ {

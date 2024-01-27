@@ -1,21 +1,11 @@
 use picofb::{DrawHandle, Event, Framebuffer, Key, MainLoop};
 
+#[derive(Default)]
 struct MyGameState {
     pos_x: f64,
     pos_y: f64,
     input_forward: i8,
     input_right: i8,
-}
-
-impl MyGameState {
-    fn new() -> Self {
-        Self {
-            pos_x: 0.0,
-            pos_y: 0.0,
-            input_forward: 0,
-            input_right: 0,
-        }
-    }
 }
 
 impl MainLoop for MyGameState {
@@ -54,18 +44,16 @@ impl MainLoop for MyGameState {
     fn render(&mut self, d: &mut DrawHandle) {
         d.clear();
 
-        let size = 5_u32;
+        let size = 10;
 
         let px = self.pos_x as u32;
         let py = self.pos_y as u32;
 
-        let xmin = px.saturating_sub(size);
-        let xmax = (px + size + 1).min(d.width());
-        let ymin = py.saturating_sub(size);
-        let ymax = (py + size + 1).min(d.height());
+        let xmax = (px + size).min(d.width());
+        let ymax = (py + size).min(d.height());
 
-        for y in ymin..ymax {
-            for x in xmin..xmax {
+        for y in py..ymax {
+            for x in px..xmax {
                 d.set(x, y, 0xff0000);
             }
         }
@@ -73,7 +61,7 @@ impl MainLoop for MyGameState {
 }
 
 fn main() {
-    let mut state = MyGameState::new();
+    let mut state = MyGameState::default();
     let mut fb = Framebuffer::new(300, 300, "example", 16);
 
     fb.run(&mut state);
