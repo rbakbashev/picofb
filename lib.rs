@@ -47,6 +47,8 @@ impl Framebuffer {
         let w_int = width as c_int;
         let h_int = height as c_int;
 
+        Self::init_library();
+
         let window = Self::create_window(w_int, h_int, title);
         let renderer = Self::create_renderer(window);
         let texture = Self::create_texture(renderer, w_int, h_int);
@@ -64,6 +66,12 @@ impl Framebuffer {
         }
     }
 
+    fn init_library() {
+        let flags = SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER;
+
+        unsafe { SDL_Init(flags) }.check_err("initialize SDL");
+    }
+
     fn create_window(w: c_int, h: c_int, title: &'static str) -> *mut SDL_Window {
         let cstr = CString::new(title).expect("Title contains null byte");
         let any_pos = SDL_WINDOWPOS_UNDEFINED_MASK as c_int;
@@ -76,7 +84,7 @@ impl Framebuffer {
     fn create_renderer(window: *mut SDL_Window) -> *mut SDL_Renderer {
         let flags = SDL_RendererFlags::SDL_RENDERER_ACCELERATED as u32;
 
-        unsafe { SDL_CreateRenderer(window, -1, flags) }.check_err("Create renderer")
+        unsafe { SDL_CreateRenderer(window, -1, flags) }.check_err("create renderer")
     }
 
     fn create_texture(renderer: *mut SDL_Renderer, w: c_int, h: c_int) -> *mut SDL_Texture {
@@ -239,6 +247,18 @@ impl<'p> DrawHandle<'p> {
 
     pub fn height(&self) -> u32 {
         self.height
+    }
+}
+
+impl CheckErr for c_int {
+    fn check_err(self, action: &'static str) -> Self {
+        if self == 0 {
+            return self;
+        }
+
+        let err_str = unsafe { CStr::from_ptr(SDL_GetError()) };
+
+        panic!("Failed to {action}: {err_str:?}");
     }
 }
 
