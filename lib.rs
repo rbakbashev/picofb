@@ -2,7 +2,7 @@ pub mod key;
 
 pub use crate::key::Key;
 
-use std::ffi::{c_int, c_void, CStr, CString};
+use std::ffi::{c_int, CStr, CString};
 use std::mem::{size_of, MaybeUninit};
 use std::ptr;
 use std::slice;
@@ -67,7 +67,7 @@ impl Framebuffer {
     fn create_window(w: c_int, h: c_int, title: &'static str) -> *mut SDL_Window {
         let cstr = CString::new(title).expect("Title contains null byte");
         let any_pos = SDL_WINDOWPOS_UNDEFINED_MASK as c_int;
-        let flags = SDL_WindowFlags::SDL_WINDOW_SHOWN as u32;
+        let flags = 0;
 
         unsafe { SDL_CreateWindow(cstr.as_ptr(), any_pos, any_pos, w, h, flags) }
             .check_err("create window")
@@ -95,7 +95,7 @@ impl Framebuffer {
             SDL_LockTexture(
                 self.texture,
                 ptr::null(),
-                ptr::addr_of_mut!(ptr).cast::<*mut c_void>(),
+                ptr::addr_of_mut!(ptr).cast(),
                 &mut pitch,
             );
 
