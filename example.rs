@@ -62,7 +62,7 @@ impl MainLoop for MyGameState {
 
 fn main() {
     let mut state = MyGameState::default();
-    let mut fb = Framebuffer::new(300, 300, "example", 16);
+    let mut fb = Framebuffer::new(300, 300, "example", 60);
 
     fb.run(&mut state);
 }
