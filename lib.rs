@@ -162,17 +162,30 @@ impl Framebuffer {
         f64::from(ms) / 1000.0
     }
 
+    fn limit_fps(&self, target_fps: f64, real_time: f64) {
+        let frame_end = Self::current_time_seconds();
+        let frame_time = frame_end - real_time;
+        let to_sleep_f = 1000.0 / target_fps - frame_time;
+
+        if to_sleep_f.is_sign_negative() {
+            return;
+        }
+
+        let to_sleep = to_sleep_f.floor() as u32;
+
+        unsafe { SDL_Delay(to_sleep) };
+    }
+
     pub fn run(&mut self, state: &mut impl MainLoop) {
         let mut current_time = Self::current_time_seconds();
 
         while self.running {
-            self.poll_events(state);
-
             let real_time = Self::current_time_seconds();
 
             while current_time < real_time {
                 current_time += self.dt;
 
+                self.poll_events(state);
                 state.update(self, self.dt, current_time);
             }
 
@@ -183,6 +196,8 @@ impl Framebuffer {
             let mut handle = self.start_render();
             state.render(&mut handle);
             self.present();
+
+            self.limit_fps(500.0, real_time);
         }
     }
 
