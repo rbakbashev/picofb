@@ -20,10 +20,10 @@ impl MainLoop for MyGameState {
                 _ => (),
             },
             Event::KeyRelease(key) => match key {
-                Key::W if self.input_forward == 1 => self.input_forward = 0,
-                Key::S if self.input_forward == -1 => self.input_forward = 0,
-                Key::D if self.input_right == 1 => self.input_right = 0,
-                Key::A if self.input_right == -1 => self.input_right = 0,
+                Key::W => self.input_forward = 0,
+                Key::S => self.input_forward = 0,
+                Key::D => self.input_right = 0,
+                Key::A => self.input_right = 0,
                 _ => (),
             },
         }
