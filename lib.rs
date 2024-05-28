@@ -47,11 +47,11 @@ impl Framebuffer {
         let w_int = width as c_int;
         let h_int = height as c_int;
 
-        Self::init_library();
+        init_library();
 
-        let window = Self::create_window(w_int, h_int, title);
-        let renderer = Self::create_renderer(window);
-        let texture = Self::create_texture(renderer, w_int, h_int);
+        let window = create_window(w_int, h_int, title);
+        let renderer = create_renderer(window);
+        let texture = create_texture(renderer, w_int, h_int);
 
         let dt = 1.0 / f64::from(update_rate);
 
@@ -64,34 +64,6 @@ impl Framebuffer {
             running: true,
             dt,
         }
-    }
-
-    fn init_library() {
-        let flags = SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER;
-
-        unsafe { SDL_Init(flags) }.check_err("initialize SDL");
-    }
-
-    fn create_window(w: c_int, h: c_int, title: &'static str) -> *mut SDL_Window {
-        let cstr = CString::new(title).expect("Title contains null byte");
-        let any_pos = SDL_WINDOWPOS_UNDEFINED_MASK as c_int;
-        let flags = 0;
-
-        unsafe { SDL_CreateWindow(cstr.as_ptr(), any_pos, any_pos, w, h, flags) }
-            .check_err("create window")
-    }
-
-    fn create_renderer(window: *mut SDL_Window) -> *mut SDL_Renderer {
-        let flags = SDL_RendererFlags::SDL_RENDERER_ACCELERATED as u32;
-
-        unsafe { SDL_CreateRenderer(window, -1, flags) }.check_err("create renderer")
-    }
-
-    fn create_texture(renderer: *mut SDL_Renderer, w: c_int, h: c_int) -> *mut SDL_Texture {
-        let format = SDL_PixelFormatEnum::SDL_PIXELFORMAT_ARGB8888 as u32;
-        let access = SDL_TextureAccess::SDL_TEXTUREACCESS_STREAMING as c_int;
-
-        unsafe { SDL_CreateTexture(renderer, format, access, w, h) }.check_err("create texture")
     }
 
     fn start_render(&mut self) -> DrawHandle {
@@ -157,13 +129,8 @@ impl Framebuffer {
         }
     }
 
-    fn current_time_seconds() -> f64 {
-        let ms = unsafe { SDL_GetTicks() };
-        f64::from(ms) / 1000.0
-    }
-
     fn limit_fps(&self, target_fps: f64, real_time: f64) {
-        let frame_end = Self::current_time_seconds();
+        let frame_end = current_time_seconds();
         let frame_time = frame_end - real_time;
         let to_sleep_f = 1000.0 / target_fps - frame_time;
 
@@ -177,10 +144,10 @@ impl Framebuffer {
     }
 
     pub fn run(&mut self, state: &mut impl MainLoop) {
-        let mut current_time = Self::current_time_seconds();
+        let mut current_time = current_time_seconds();
 
         while self.running {
-            let real_time = Self::current_time_seconds();
+            let real_time = current_time_seconds();
 
             while current_time < real_time {
                 current_time += self.dt;
@@ -263,6 +230,10 @@ impl<'p> DrawHandle<'p> {
     pub fn height(&self) -> u32 {
         self.height
     }
+
+    pub fn as_slice(&mut self) -> &mut [u32] {
+        self.pixels
+    }
 }
 
 impl CheckErr for c_int {
@@ -287,4 +258,38 @@ impl<T> CheckErr for *mut T {
 
         panic!("Failed to {action}: {err_str:?}");
     }
+}
+
+fn init_library() {
+    let flags = SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_TIMER;
+
+    unsafe { SDL_Init(flags) }.check_err("initialize SDL");
+}
+
+fn create_window(w: c_int, h: c_int, title: &'static str) -> *mut SDL_Window {
+    let cstr = CString::new(title).expect("Title contains null byte");
+    let any_pos = SDL_WINDOWPOS_UNDEFINED_MASK as c_int;
+    let flags = 0;
+
+    unsafe { SDL_CreateWindow(cstr.as_ptr(), any_pos, any_pos, w, h, flags) }
+        .check_err("create window")
+}
+
+fn create_renderer(window: *mut SDL_Window) -> *mut SDL_Renderer {
+    let flags = SDL_RendererFlags::SDL_RENDERER_ACCELERATED as u32;
+
+    unsafe { SDL_CreateRenderer(window, -1, flags) }.check_err("create renderer")
+}
+
+fn create_texture(renderer: *mut SDL_Renderer, w: c_int, h: c_int) -> *mut SDL_Texture {
+    let format = SDL_PixelFormatEnum::SDL_PIXELFORMAT_ARGB8888 as u32;
+    let access = SDL_TextureAccess::SDL_TEXTUREACCESS_STREAMING as c_int;
+
+    unsafe { SDL_CreateTexture(renderer, format, access, w, h) }.check_err("create texture")
+}
+
+fn current_time_seconds() -> f64 {
+    let ms = unsafe { SDL_GetTicks() };
+
+    f64::from(ms) / 1000.0
 }
