@@ -204,6 +204,17 @@ impl Framebuffer {
             SDL_SetRelativeMouseMode(enabled);
         }
     }
+
+    pub fn mouse_pos(&self) -> (i32, i32) {
+        let mut x = 0;
+        let mut y = 0;
+
+        unsafe {
+            SDL_GetRelativeMouseState(&mut x, &mut y);
+        }
+
+        (x, y)
+    }
 }
 
 impl Drop for Framebuffer {
