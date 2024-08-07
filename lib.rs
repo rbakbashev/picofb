@@ -30,11 +30,12 @@ pub struct DrawHandle<'p> {
 pub enum Event {
     KeyPress(Key),
     KeyRelease(Key),
+    MouseMove(i32, i32),
 }
 
 pub trait MainLoop {
-    fn handle_event(&mut self, d: &mut Framebuffer, event: &Event);
-    fn update(&mut self, d: &mut Framebuffer, dt: f64, time: f64);
+    fn handle_event(&mut self, fb: &mut Framebuffer, event: &Event);
+    fn update(&mut self, fb: &mut Framebuffer, dt: f64, time: f64);
     fn render(&mut self, d: &mut DrawHandle);
 }
 
@@ -122,6 +123,10 @@ impl Framebuffer {
                         let event = Event::KeyRelease(key);
                         state.handle_event(self, &event);
                     }
+                    SDL_EventType::SDL_MOUSEMOTION => {
+                        let event = Event::MouseMove(event.motion.xrel, event.motion.yrel);
+                        state.handle_event(self, &event);
+                    }
                     SDL_EventType::SDL_QUIT => self.running = false,
                     _ => (),
                 }
@@ -185,6 +190,18 @@ impl Framebuffer {
 
         unsafe {
             SDL_SetWindowTitle(self.window, cstr.as_ptr());
+        }
+    }
+
+    pub fn grab_mouse(&mut self, grab: bool) {
+        let enabled = if grab {
+            SDL_bool::SDL_TRUE
+        } else {
+            SDL_bool::SDL_FALSE
+        };
+
+        unsafe {
+            SDL_SetRelativeMouseMode(enabled);
         }
     }
 }

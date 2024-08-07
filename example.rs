@@ -26,6 +26,7 @@ impl MainLoop for MyGameState {
                 Key::A => self.input_right = 0,
                 _ => (),
             },
+            Event::MouseMove(_, _) => (),
         }
     }
 
