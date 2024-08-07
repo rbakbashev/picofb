@@ -30,13 +30,13 @@ impl MainLoop for MyGameState {
         }
     }
 
-    fn update(&mut self, fb: &mut Framebuffer, dt: f64, _time: f64) {
+    fn update(&mut self, fb: &mut Framebuffer, dt: f32, _time: f64) {
         if self.input_forward == 0 && self.input_right == 0 {
             return;
         }
 
-        self.pos_x += f64::from(self.input_right) * 40.0 * dt;
-        self.pos_y -= f64::from(self.input_forward) * 40.0 * dt;
+        self.pos_x += f64::from(self.input_right) * 40.0 * f64::from(dt);
+        self.pos_y -= f64::from(self.input_forward) * 40.0 * f64::from(dt);
 
         self.pos_x = self.pos_x.clamp(0.0, fb.width().into());
         self.pos_y = self.pos_y.clamp(0.0, fb.height().into());

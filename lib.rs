@@ -17,7 +17,7 @@ pub struct Framebuffer {
     renderer: *mut SDL_Renderer,
     texture: *mut SDL_Texture,
     running: bool,
-    dt: f64,
+    dt: f32,
 }
 
 pub struct DrawHandle<'p> {
@@ -35,7 +35,7 @@ pub enum Event {
 
 pub trait MainLoop {
     fn handle_event(&mut self, fb: &mut Framebuffer, event: &Event);
-    fn update(&mut self, fb: &mut Framebuffer, dt: f64, time: f64);
+    fn update(&mut self, fb: &mut Framebuffer, dt: f32, time: f64);
     fn render(&mut self, d: &mut DrawHandle);
 }
 
@@ -54,7 +54,7 @@ impl Framebuffer {
         let renderer = create_renderer(window);
         let texture = create_texture(renderer, w_int, h_int);
 
-        let dt = 1.0 / f64::from(update_rate);
+        let dt = 1.0 / f32::from(update_rate);
 
         Self {
             width,
@@ -155,7 +155,7 @@ impl Framebuffer {
             let real_time = current_time_seconds();
 
             while current_time < real_time {
-                current_time += self.dt;
+                current_time += f64::from(self.dt);
 
                 self.poll_events(state);
                 state.update(self, self.dt, current_time);
