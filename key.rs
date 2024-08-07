@@ -1,7 +1,7 @@
 use sdl2_sys::SDL_KeyCode;
 
 #[repr(i32)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Key {
     Unknown = SDL_KeyCode::SDLK_UNKNOWN as i32,
     Return = SDL_KeyCode::SDLK_RETURN as i32,
