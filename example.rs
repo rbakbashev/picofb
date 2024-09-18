@@ -2,8 +2,8 @@ use picofb::{DrawHandle, Event, Framebuffer, Key, MainLoop};
 
 #[derive(Default)]
 struct MyGameState {
-    pos_x: f64,
-    pos_y: f64,
+    pos_x: f32,
+    pos_y: f32,
     input_forward: i8,
     input_right: i8,
 }
@@ -31,15 +31,11 @@ impl MainLoop for MyGameState {
     }
 
     fn update(&mut self, fb: &mut Framebuffer, dt: f32, _time: f64) {
-        if self.input_forward == 0 && self.input_right == 0 {
-            return;
-        }
+        self.pos_x += 50. * dt * f32::from(self.input_right);
+        self.pos_y -= 50. * dt * f32::from(self.input_forward);
 
-        self.pos_x += f64::from(self.input_right) * 40.0 * f64::from(dt);
-        self.pos_y -= f64::from(self.input_forward) * 40.0 * f64::from(dt);
-
-        self.pos_x = self.pos_x.clamp(0.0, fb.width().into());
-        self.pos_y = self.pos_y.clamp(0.0, fb.height().into());
+        self.pos_x = self.pos_x.clamp(0., fb.width() as f32);
+        self.pos_y = self.pos_y.clamp(0., fb.height() as f32);
     }
 
     fn render(&mut self, d: &mut DrawHandle) {
