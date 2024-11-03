@@ -181,6 +181,16 @@ impl Framebuffer {
         self.height
     }
 
+    #[allow(clippy::cast_precision_loss)]
+    pub fn widthf(&self) -> f32 {
+        self.width as f32
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    pub fn heightf(&self) -> f32 {
+        self.height as f32
+    }
+
     pub fn close(&mut self) {
         self.running = false;
     }
@@ -257,6 +267,16 @@ impl<'p> DrawHandle<'p> {
 
     pub fn height(&self) -> u32 {
         self.height
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    pub fn widthf(&self) -> f32 {
+        self.width as f32
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    pub fn heightf(&self) -> f32 {
+        self.height as f32
     }
 
     pub fn as_slice(&mut self) -> &mut [u32] {
