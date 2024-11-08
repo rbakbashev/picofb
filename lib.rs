@@ -18,6 +18,8 @@ pub struct Framebuffer {
     texture: *mut SDL_Texture,
     running: bool,
     dt: f32,
+    fps_buf: FpsCounter,
+    title: &'static str,
 }
 
 pub struct DrawHandle<'p> {
@@ -43,6 +45,12 @@ trait CheckErr {
     fn check_err(self, action: &'static str) -> Self;
 }
 
+struct FpsCounter {
+    measurements: Vec<f64>,
+    idx: usize,
+    sum: f64,
+}
+
 impl Framebuffer {
     pub fn new(width: u32, height: u32, title: &'static str, update_rate: i16) -> Self {
         let w_int = width as c_int;
@@ -56,6 +64,8 @@ impl Framebuffer {
 
         let dt = 1.0 / f32::from(update_rate);
 
+        let fps_buf = FpsCounter::new(32);
+
         Self {
             width,
             height,
@@ -64,6 +74,8 @@ impl Framebuffer {
             texture,
             running: true,
             dt,
+            fps_buf,
+            title,
         }
     }
 
@@ -148,6 +160,13 @@ impl Framebuffer {
         unsafe { SDL_Delay(to_sleep) };
     }
 
+    fn show_fps(&mut self, real_time: f64) {
+        let elapsed = current_time_seconds() - real_time;
+        let average = self.fps_buf.add_measurement(1. / elapsed);
+
+        self.set_window_title(&format!("{} FPS {:5.3}", self.title, average));
+    }
+
     pub fn run(&mut self, state: &mut impl MainLoop) {
         let mut current_time = current_time_seconds();
 
@@ -170,6 +189,7 @@ impl Framebuffer {
             self.present();
 
             self.limit_fps(500.0, real_time);
+            self.show_fps(real_time);
         }
     }
 
@@ -305,6 +325,29 @@ impl<T> CheckErr for *mut T {
         let err_str = unsafe { CStr::from_ptr(SDL_GetError()) };
 
         panic!("Failed to {action}: {err_str:?}");
+    }
+}
+
+impl FpsCounter {
+    pub fn new(num_measurements: usize) -> Self {
+        Self {
+            measurements: vec![0.; num_measurements],
+            idx: 0,
+            sum: 0.,
+        }
+    }
+
+    #[allow(clippy::cast_precision_loss)]
+    pub fn add_measurement(&mut self, fps: f64) -> f64 {
+        let num_measurements = self.measurements.len();
+
+        self.sum -= self.measurements[self.idx];
+        self.sum += fps;
+        self.measurements[self.idx] = fps;
+        self.idx += 1;
+        self.idx %= num_measurements;
+
+        self.sum / (num_measurements as f64)
     }
 }
 
