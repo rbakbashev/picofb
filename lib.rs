@@ -28,6 +28,7 @@ pub struct DrawHandle<'p> {
     width: u32,
     height: u32,
     pixels: &'p mut [u32],
+    fb: &'p mut Framebuffer,
 }
 
 #[derive(Debug)]
@@ -103,6 +104,7 @@ impl Framebuffer {
             width: self.width,
             height: self.height,
             pixels,
+            fb: self,
         }
     }
 
@@ -319,6 +321,44 @@ impl<'p> DrawHandle<'p> {
 
     pub fn as_slice(&mut self) -> &mut [u32] {
         self.pixels
+    }
+
+    pub fn pause(&mut self, unpause_key: Key) {
+        self.fb
+            .set_window_title(&format!("{} [paused]", self.fb.title));
+
+        while !self.poll_key_pressed(unpause_key) {
+            self.fb.present();
+            unsafe { SDL_Delay(16) };
+        }
+    }
+
+    fn poll_key_pressed(&mut self, key: Key) -> bool {
+        let mut event_ptr = MaybeUninit::<SDL_Event>::uninit();
+
+        loop {
+            unsafe {
+                if SDL_PollEvent(event_ptr.as_mut_ptr()) == 0 {
+                    break;
+                }
+
+                let event = event_ptr.assume_init();
+                let type_ = std::mem::transmute::<u32, SDL_EventType>(event.type_);
+
+                match type_ {
+                    SDL_EventType::SDL_KEYDOWN => {
+                        let event_key = std::mem::transmute::<i32, Key>(event.key.keysym.sym);
+                        if event_key == key {
+                            return true;
+                        }
+                    }
+                    SDL_EventType::SDL_QUIT => self.fb.running = false,
+                    _ => (),
+                }
+            }
+        }
+
+        false
     }
 }
 
