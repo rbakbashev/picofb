@@ -1,3 +1,5 @@
+#![allow(clippy::missing_const_for_fn, clippy::must_use_candidate)]
+
 pub mod key;
 
 pub use crate::key::Key;
@@ -122,16 +124,16 @@ impl Framebuffer {
                 }
 
                 let event = event_ptr.assume_init();
-                let type_: SDL_EventType = std::mem::transmute(event.type_);
+                let type_ = std::mem::transmute::<u32, SDL_EventType>(event.type_);
 
                 match type_ {
                     SDL_EventType::SDL_KEYDOWN => {
-                        let key = std::mem::transmute(event.key.keysym.sym);
+                        let key = std::mem::transmute::<i32, Key>(event.key.keysym.sym);
                         let event = Event::KeyPress(key);
                         state.handle_event(self, &event);
                     }
                     SDL_EventType::SDL_KEYUP => {
-                        let key = std::mem::transmute(event.key.keysym.sym);
+                        let key = std::mem::transmute::<i32, Key>(event.key.keysym.sym);
                         let event = Event::KeyRelease(key);
                         state.handle_event(self, &event);
                     }
@@ -144,20 +146,6 @@ impl Framebuffer {
                 }
             }
         }
-    }
-
-    fn limit_fps(&self, target_fps: f64, real_time: f64) {
-        let frame_end = current_time_seconds();
-        let frame_time = frame_end - real_time;
-        let to_sleep_f = 1000.0 / target_fps - frame_time;
-
-        if to_sleep_f.is_sign_negative() {
-            return;
-        }
-
-        let to_sleep = to_sleep_f.floor() as u32;
-
-        unsafe { SDL_Delay(to_sleep) };
     }
 
     fn show_fps(&mut self, real_time: f64) {
@@ -188,7 +176,7 @@ impl Framebuffer {
             state.render(&mut handle);
             self.present();
 
-            self.limit_fps(500.0, real_time);
+            limit_fps(500.0, real_time);
             self.show_fps(real_time);
         }
     }
@@ -215,7 +203,7 @@ impl Framebuffer {
             state.render(&mut handle);
             self.present();
 
-            self.limit_fps(500.0, real_time);
+            limit_fps(500.0, real_time);
 
             frame += 1;
 
@@ -413,4 +401,18 @@ fn current_time_seconds() -> f64 {
     let ms = unsafe { SDL_GetTicks() };
 
     f64::from(ms) / 1000.0
+}
+
+fn limit_fps(target_fps: f64, real_time: f64) {
+    let frame_end = current_time_seconds();
+    let frame_time = frame_end - real_time;
+    let to_sleep_f = 1000.0 / target_fps - frame_time;
+
+    if to_sleep_f.is_sign_negative() {
+        return;
+    }
+
+    let to_sleep = to_sleep_f.floor() as u32;
+
+    unsafe { SDL_Delay(to_sleep) };
 }

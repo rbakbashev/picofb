@@ -20,10 +20,8 @@ impl MainLoop for MyGameState {
                 _ => (),
             },
             Event::KeyRelease(key) => match key {
-                Key::W => self.input_forward = 0,
-                Key::S => self.input_forward = 0,
-                Key::D => self.input_right = 0,
-                Key::A => self.input_right = 0,
+                Key::W | Key::S => self.input_forward = 0,
+                Key::D | Key::A => self.input_right = 0,
                 _ => (),
             },
             Event::MouseMove(_, _) => (),
@@ -34,8 +32,8 @@ impl MainLoop for MyGameState {
         self.pos_x += 50. * dt * f32::from(self.input_right);
         self.pos_y -= 50. * dt * f32::from(self.input_forward);
 
-        self.pos_x = self.pos_x.clamp(0., fb.width() as f32);
-        self.pos_y = self.pos_y.clamp(0., fb.height() as f32);
+        self.pos_x = self.pos_x.clamp(0., fb.widthf());
+        self.pos_y = self.pos_y.clamp(0., fb.heightf());
     }
 
     fn render(&mut self, d: &mut DrawHandle) {
