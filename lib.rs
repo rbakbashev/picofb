@@ -255,6 +255,12 @@ impl Framebuffer {
         }
     }
 
+    pub fn grab_state(&mut self) -> bool {
+        let state = unsafe { SDL_GetRelativeMouseMode() };
+
+        state == SDL_bool::SDL_TRUE
+    }
+
     pub fn mouse_pos(&self) -> (i32, i32) {
         let mut x = 0;
         let mut y = 0;
@@ -324,6 +330,9 @@ impl<'p> DrawHandle<'p> {
     }
 
     pub fn pause(&mut self, unpause_key: Key) {
+        let grab = self.fb.grab_state();
+
+        self.fb.grab_mouse(false);
         self.fb
             .set_window_title(&format!("{} [paused]", self.fb.title));
 
@@ -331,6 +340,8 @@ impl<'p> DrawHandle<'p> {
             self.fb.present();
             unsafe { SDL_Delay(16) };
         }
+
+        self.fb.grab_mouse(grab);
     }
 
     fn poll_key_pressed(&mut self, key: Key) -> bool {
@@ -352,7 +363,7 @@ impl<'p> DrawHandle<'p> {
                             return true;
                         }
                     }
-                    SDL_EventType::SDL_QUIT => self.fb.running = false,
+                    SDL_EventType::SDL_QUIT => std::process::exit(0),
                     _ => (),
                 }
             }
