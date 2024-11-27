@@ -193,6 +193,36 @@ impl Framebuffer {
         }
     }
 
+    pub fn benchmark(&mut self, state: &mut impl MainLoop, frames: usize) {
+        let mut current_time = current_time_seconds();
+        let mut frame = 0;
+
+        while self.running && frame < frames {
+            let real_time = current_time_seconds();
+
+            while current_time < real_time {
+                current_time += f64::from(self.dt);
+
+                self.poll_events(state);
+                state.update(self, self.dt, current_time);
+            }
+
+            if !self.running {
+                break;
+            }
+
+            let mut handle = self.start_render();
+            state.render(&mut handle);
+            self.present();
+
+            self.limit_fps(500.0, real_time);
+
+            frame += 1;
+
+            self.set_window_title(&format!("{} frame {}/{}", self.title, frame, frames));
+        }
+    }
+
     pub fn width(&self) -> u32 {
         self.width
     }
