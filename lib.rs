@@ -362,6 +362,9 @@ impl<'p> DrawHandle<'p> {
                         if event_key == key {
                             return true;
                         }
+                        if event_key == Key::Escape {
+                            std::process::exit(0);
+                        }
                     }
                     SDL_EventType::SDL_QUIT => std::process::exit(0),
                     _ => (),
