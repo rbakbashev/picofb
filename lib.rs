@@ -4,6 +4,7 @@ pub mod key;
 
 pub use crate::key::Key;
 
+use std::collections::HashMap;
 use std::ffi::{c_int, CStr, CString};
 use std::mem::{size_of, MaybeUninit};
 use std::ptr;
@@ -18,6 +19,7 @@ pub struct Framebuffer {
     window: *mut SDL_Window,
     renderer: *mut SDL_Renderer,
     texture: *mut SDL_Texture,
+    key_pressed: HashMap<Key, bool>,
     running: bool,
     dt: f32,
     fps_buf: FpsCounter,
@@ -65,8 +67,9 @@ impl Framebuffer {
         let renderer = create_renderer(window);
         let texture = create_texture(renderer, w_int, h_int);
 
+        let key_pressed = HashMap::with_capacity(240);
+        let running = true;
         let dt = 1.0 / f32::from(update_rate);
-
         let fps_buf = FpsCounter::new(32);
 
         Self {
@@ -75,7 +78,8 @@ impl Framebuffer {
             window,
             renderer,
             texture,
-            running: true,
+            key_pressed,
+            running,
             dt,
             fps_buf,
             title,
@@ -132,11 +136,19 @@ impl Framebuffer {
                     SDL_EventType::SDL_KEYDOWN => {
                         let key = std::mem::transmute::<i32, Key>(event.key.keysym.sym);
                         let event = Event::KeyPress(key);
+                        self.key_pressed
+                            .entry(key)
+                            .and_modify(|pr| *pr = true)
+                            .or_insert(true);
                         state.handle_event(self, &event);
                     }
                     SDL_EventType::SDL_KEYUP => {
                         let key = std::mem::transmute::<i32, Key>(event.key.keysym.sym);
                         let event = Event::KeyRelease(key);
+                        self.key_pressed
+                            .entry(key)
+                            .and_modify(|pr| *pr = false)
+                            .or_insert(false);
                         state.handle_event(self, &event);
                     }
                     SDL_EventType::SDL_MOUSEMOTION => {
@@ -271,6 +283,10 @@ impl Framebuffer {
 
         (x, y)
     }
+
+    pub fn key_pressed(&self, key: Key) -> bool {
+        *self.key_pressed.get(&key).unwrap_or(&false)
+    }
 }
 
 impl Drop for Framebuffer {
@@ -344,7 +360,7 @@ impl<'p> DrawHandle<'p> {
         self.fb.grab_mouse(grab);
     }
 
-    fn poll_key_pressed(&mut self, key: Key) -> bool {
+    fn poll_key_pressed(&self, key: Key) -> bool {
         let mut event_ptr = MaybeUninit::<SDL_Event>::uninit();
 
         loop {
@@ -373,6 +389,10 @@ impl<'p> DrawHandle<'p> {
         }
 
         false
+    }
+
+    pub fn key_pressed(&self, key: Key) -> bool {
+        self.fb.key_pressed(key)
     }
 }
 
