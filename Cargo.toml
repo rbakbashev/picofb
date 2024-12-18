@@ -2,6 +2,7 @@
 name = "picofb"
 version = "0.0.0"
 edition = "2021"
+license = "Zlib"
 
 [lib]
 path = "lib.rs"
