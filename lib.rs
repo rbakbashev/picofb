@@ -278,6 +278,17 @@ impl Framebuffer {
         let mut y = 0;
 
         unsafe {
+            SDL_GetMouseState(&mut x, &mut y);
+        }
+
+        (x, y)
+    }
+
+    pub fn mouse_pos_rel(&self) -> (i32, i32) {
+        let mut x = 0;
+        let mut y = 0;
+
+        unsafe {
             SDL_GetRelativeMouseState(&mut x, &mut y);
         }
 
