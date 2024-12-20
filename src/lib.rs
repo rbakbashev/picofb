@@ -1,8 +1,7 @@
 #![allow(clippy::missing_const_for_fn, clippy::must_use_candidate)]
 
 pub mod key;
-
-pub use crate::key::Key;
+mod text_renderer;
 
 use std::collections::HashMap;
 use std::ffi::{c_int, CStr, CString};
@@ -12,6 +11,9 @@ use std::slice;
 
 #[allow(clippy::wildcard_imports)]
 use sdl2_sys::*;
+
+pub use key::Key;
+use text_renderer::TextRenderer;
 
 pub struct Framebuffer {
     width: u32,
@@ -55,6 +57,8 @@ struct FpsCounter {
     idx: usize,
     sum: f64,
 }
+
+const TEXT_RENDERER: TextRenderer = TextRenderer::new();
 
 impl Framebuffer {
     pub fn new(width: u32, height: u32, title: &'static str, update_rate: i16) -> Self {
@@ -404,6 +408,10 @@ impl<'p> DrawHandle<'p> {
 
     pub fn key_pressed(&self, key: Key) -> bool {
         self.fb.key_pressed(key)
+    }
+
+    pub fn draw_text(&mut self, pos_x: u32, pos_y: u32, color: u32, text: &str) {
+        TEXT_RENDERER.render(self, pos_x, pos_y, color, text);
     }
 }
 
