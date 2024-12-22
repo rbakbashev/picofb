@@ -367,43 +367,12 @@ impl<'p> DrawHandle<'p> {
         self.fb
             .set_window_title(&format!("{} [paused]", self.fb.title));
 
-        while !self.poll_key_pressed(unpause_key) {
+        while !poll_key_pressed(unpause_key) {
             self.fb.present();
             unsafe { SDL_Delay(16) };
         }
 
         self.fb.grab_mouse(grab);
-    }
-
-    fn poll_key_pressed(&self, key: Key) -> bool {
-        let mut event_ptr = MaybeUninit::<SDL_Event>::uninit();
-
-        loop {
-            unsafe {
-                if SDL_PollEvent(event_ptr.as_mut_ptr()) == 0 {
-                    break;
-                }
-
-                let event = event_ptr.assume_init();
-                let type_ = std::mem::transmute::<u32, SDL_EventType>(event.type_);
-
-                match type_ {
-                    SDL_EventType::SDL_KEYDOWN => {
-                        let event_key = std::mem::transmute::<i32, Key>(event.key.keysym.sym);
-                        if event_key == key {
-                            return true;
-                        }
-                        if event_key == Key::Escape {
-                            std::process::exit(0);
-                        }
-                    }
-                    SDL_EventType::SDL_QUIT => std::process::exit(0),
-                    _ => (),
-                }
-            }
-        }
-
-        false
     }
 
     pub fn key_pressed(&self, key: Key) -> bool {
@@ -508,4 +477,35 @@ fn limit_fps(target_fps: f64, real_time: f64) {
     let to_sleep = to_sleep_f.floor() as u32;
 
     unsafe { SDL_Delay(to_sleep) };
+}
+
+fn poll_key_pressed(key: Key) -> bool {
+    let mut event_ptr = MaybeUninit::<SDL_Event>::uninit();
+
+    loop {
+        unsafe {
+            if SDL_PollEvent(event_ptr.as_mut_ptr()) == 0 {
+                break;
+            }
+
+            let event = event_ptr.assume_init();
+            let type_ = std::mem::transmute::<u32, SDL_EventType>(event.type_);
+
+            match type_ {
+                SDL_EventType::SDL_KEYDOWN => {
+                    let event_key = std::mem::transmute::<i32, Key>(event.key.keysym.sym);
+                    if event_key == key {
+                        return true;
+                    }
+                    if event_key == Key::Escape {
+                        std::process::exit(0);
+                    }
+                }
+                SDL_EventType::SDL_QUIT => std::process::exit(0),
+                _ => (),
+            }
+        }
+    }
+
+    false
 }
