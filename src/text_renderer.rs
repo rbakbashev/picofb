@@ -83,20 +83,10 @@ impl TextRenderer {
                     continue;
                 }
 
-                let mut bit = 7;
-
-                loop {
-                    let mask = 1 << bit;
-
-                    if glypth_byte & mask != 0 {
+                for bit in 0..8 {
+                    if glypth_byte & (1 << bit) != 0 {
                         d.set(pos_x + 7 - bit, pos_y + row, color);
                     }
-
-                    if bit == 0 {
-                        break;
-                    }
-
-                    bit -= 1;
                 }
             }
         }
