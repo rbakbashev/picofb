@@ -259,22 +259,12 @@ impl Framebuffer {
         }
     }
 
-    pub fn grab_mouse(&mut self, grab: bool) {
-        let enabled = if grab {
-            SDL_bool::SDL_TRUE
-        } else {
-            SDL_bool::SDL_FALSE
-        };
-
-        unsafe {
-            SDL_SetRelativeMouseMode(enabled);
-        }
+    pub fn grab_mouse(&mut self, enabled: bool) {
+        set_mouse_grab(enabled);
     }
 
     pub fn grab_state(&mut self) -> bool {
-        let state = unsafe { SDL_GetRelativeMouseMode() };
-
-        state == SDL_bool::SDL_TRUE
+        get_mouse_grab()
     }
 
     pub fn mouse_pos(&self) -> (i32, i32) {
@@ -361,9 +351,9 @@ impl<'p> DrawHandle<'p> {
     }
 
     pub fn pause(&mut self, unpause_key: Key) {
-        let grab = self.fb.grab_state();
+        let grab = get_mouse_grab();
 
-        self.fb.grab_mouse(false);
+        set_mouse_grab(false);
         self.fb
             .set_window_title(&format!("{} [paused]", self.fb.title));
 
@@ -372,7 +362,7 @@ impl<'p> DrawHandle<'p> {
             unsafe { SDL_Delay(16) };
         }
 
-        self.fb.grab_mouse(grab);
+        set_mouse_grab(grab);
     }
 
     pub fn key_pressed(&self, key: Key) -> bool {
@@ -508,4 +498,22 @@ fn poll_key_pressed(key: Key) -> bool {
     }
 
     false
+}
+
+fn set_mouse_grab(enabled: bool) {
+    let enabled = if enabled {
+        SDL_bool::SDL_TRUE
+    } else {
+        SDL_bool::SDL_FALSE
+    };
+
+    unsafe {
+        SDL_SetRelativeMouseMode(enabled);
+    }
+}
+
+fn get_mouse_grab() -> bool {
+    let state = unsafe { SDL_GetRelativeMouseMode() };
+
+    state == SDL_bool::SDL_TRUE
 }
