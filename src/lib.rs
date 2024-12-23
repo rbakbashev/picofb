@@ -22,7 +22,7 @@ pub struct Framebuffer {
     fps_buf: FpsCounter,
 }
 
-struct Window {
+pub struct Window {
     width: u32,
     height: u32,
     handle: *mut SDL_Window,
@@ -80,6 +80,10 @@ impl Framebuffer {
             dt,
             fps_buf,
         }
+    }
+
+    pub fn add_window(&self, width: u32, height: u32, title: &'static str) -> Window {
+        Window::new(width, height, title)
     }
 
     fn poll_events(&mut self, state: &mut impl MainLoop) {
@@ -405,6 +409,12 @@ impl<'p, 'w> DrawHandle<'p, 'w> {
 
     pub fn draw_text(&mut self, pos_x: u32, pos_y: u32, color: u32, text: &str) {
         TEXT_RENDERER.render(self, pos_x, pos_y, color, text);
+    }
+
+    pub fn render_window(&self, window: &Window, state: &mut impl MainLoop) {
+        let mut handle = window.start_render();
+        state.render(&mut handle);
+        window.present();
     }
 }
 
