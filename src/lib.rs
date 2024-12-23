@@ -33,11 +33,11 @@ pub struct Window {
     title: &'static str,
 }
 
-pub struct DrawHandle<'p, 'w> {
+pub struct DrawHandle<'p> {
     width: u32,
     height: u32,
     pixels: &'p mut [u32],
-    window: &'w Window,
+    window: &'p Window,
 }
 
 #[derive(Debug)]
@@ -343,7 +343,7 @@ impl Drop for Window {
     }
 }
 
-impl<'p, 'w> DrawHandle<'p, 'w> {
+impl<'p> DrawHandle<'p> {
     pub fn clear(&mut self) {
         self.pixels.fill(0);
     }
