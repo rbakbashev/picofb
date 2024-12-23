@@ -5,7 +5,7 @@ mod text_renderer;
 
 use std::collections::HashMap;
 use std::ffi::{c_int, CStr, CString};
-use std::mem::{size_of, MaybeUninit};
+use std::mem::{size_of, ManuallyDrop, MaybeUninit};
 use std::ptr;
 use std::slice;
 
@@ -16,23 +16,28 @@ pub use key::Key;
 use text_renderer::TextRenderer;
 
 pub struct Framebuffer {
-    width: u32,
-    height: u32,
-    window: *mut SDL_Window,
-    renderer: *mut SDL_Renderer,
-    texture: *mut SDL_Texture,
-    key_pressed: HashMap<Key, bool>,
+    main_window: ManuallyDrop<Window>,
     running: bool,
     dt: f32,
     fps_buf: FpsCounter,
+}
+
+struct Window {
+    width: u32,
+    height: u32,
+    handle: *mut SDL_Window,
+    renderer: *mut SDL_Renderer,
+    texture: *mut SDL_Texture,
+    _id: u32,
+    key_pressed: HashMap<Key, bool>,
     title: &'static str,
 }
 
-pub struct DrawHandle<'p> {
+pub struct DrawHandle<'p, 'w> {
     width: u32,
     height: u32,
     pixels: &'p mut [u32],
-    fb: &'p mut Framebuffer,
+    window: &'w Window,
 }
 
 #[derive(Debug)]
@@ -62,65 +67,18 @@ const TEXT_RENDERER: TextRenderer = TextRenderer::new();
 
 impl Framebuffer {
     pub fn new(width: u32, height: u32, title: &'static str, update_rate: i16) -> Self {
-        let w_int = width as c_int;
-        let h_int = height as c_int;
-
         init_library();
 
-        let window = create_window(w_int, h_int, title);
-        let renderer = create_renderer(window);
-        let texture = create_texture(renderer, w_int, h_int);
-
-        let key_pressed = HashMap::with_capacity(240);
+        let main_window = ManuallyDrop::new(Window::new(width, height, title));
         let running = true;
-        let dt = 1.0 / f32::from(update_rate);
+        let dt = 1. / f32::from(update_rate);
         let fps_buf = FpsCounter::new(32);
 
         Self {
-            width,
-            height,
-            window,
-            renderer,
-            texture,
-            key_pressed,
+            main_window,
             running,
             dt,
             fps_buf,
-            title,
-        }
-    }
-
-    fn start_render(&mut self) -> DrawHandle {
-        let mut ptr: *mut u32 = ptr::null_mut();
-        let mut pitch = 0;
-        let num_pixels = (self.width * self.height) as usize;
-
-        let pixels = unsafe {
-            SDL_LockTexture(
-                self.texture,
-                ptr::null(),
-                ptr::addr_of_mut!(ptr).cast(),
-                &mut pitch,
-            );
-
-            debug_assert!(pitch / self.width as i32 == size_of::<u32>() as i32);
-
-            slice::from_raw_parts_mut(ptr, num_pixels)
-        };
-
-        DrawHandle {
-            width: self.width,
-            height: self.height,
-            pixels,
-            fb: self,
-        }
-    }
-
-    fn present(&self) {
-        unsafe {
-            SDL_UnlockTexture(self.texture);
-            SDL_RenderCopy(self.renderer, self.texture, ptr::null(), ptr::null());
-            SDL_RenderPresent(self.renderer);
         }
     }
 
@@ -140,7 +98,8 @@ impl Framebuffer {
                     SDL_EventType::SDL_KEYDOWN => {
                         let key = std::mem::transmute::<i32, Key>(event.key.keysym.sym);
                         let event = Event::KeyPress(key);
-                        self.key_pressed
+                        self.main_window
+                            .key_pressed
                             .entry(key)
                             .and_modify(|pr| *pr = true)
                             .or_insert(true);
@@ -149,7 +108,8 @@ impl Framebuffer {
                     SDL_EventType::SDL_KEYUP => {
                         let key = std::mem::transmute::<i32, Key>(event.key.keysym.sym);
                         let event = Event::KeyRelease(key);
-                        self.key_pressed
+                        self.main_window
+                            .key_pressed
                             .entry(key)
                             .and_modify(|pr| *pr = false)
                             .or_insert(false);
@@ -170,7 +130,7 @@ impl Framebuffer {
         let elapsed = current_time_seconds() - real_time;
         let average = self.fps_buf.add_measurement(1. / elapsed);
 
-        self.set_window_title(&format!("{} FPS {:5.3}", self.title, average));
+        self.set_window_title(&format!("{} FPS {:5.3}", self.main_window.title, average));
     }
 
     pub fn run(&mut self, state: &mut impl MainLoop) {
@@ -190,9 +150,9 @@ impl Framebuffer {
                 break;
             }
 
-            let mut handle = self.start_render();
+            let mut handle = self.main_window.start_render();
             state.render(&mut handle);
-            self.present();
+            self.main_window.present();
 
             limit_fps(500.0, real_time);
             self.show_fps(real_time);
@@ -200,6 +160,7 @@ impl Framebuffer {
     }
 
     pub fn benchmark(&mut self, state: &mut impl MainLoop, frames: usize) {
+        let title = self.main_window.title;
         let mut current_time = current_time_seconds();
         let mut frame = 0;
 
@@ -217,34 +178,34 @@ impl Framebuffer {
                 break;
             }
 
-            let mut handle = self.start_render();
+            let mut handle = self.main_window.start_render();
             state.render(&mut handle);
-            self.present();
+            self.main_window.present();
 
             limit_fps(500.0, real_time);
 
             frame += 1;
 
-            self.set_window_title(&format!("{} frame {}/{}", self.title, frame, frames));
+            self.set_window_title(&format!("{} frame {}/{}", title, frame, frames));
         }
     }
 
     pub fn width(&self) -> u32 {
-        self.width
+        self.main_window.width
     }
 
     pub fn height(&self) -> u32 {
-        self.height
+        self.main_window.height
     }
 
     #[allow(clippy::cast_precision_loss)]
     pub fn widthf(&self) -> f32 {
-        self.width as f32
+        self.main_window.width as f32
     }
 
     #[allow(clippy::cast_precision_loss)]
     pub fn heightf(&self) -> f32 {
-        self.height as f32
+        self.main_window.height as f32
     }
 
     pub fn close(&mut self) {
@@ -252,11 +213,7 @@ impl Framebuffer {
     }
 
     pub fn set_window_title(&mut self, title: &str) {
-        let cstr = CString::new(title).expect("Title contains null byte");
-
-        unsafe {
-            SDL_SetWindowTitle(self.window, cstr.as_ptr());
-        }
+        self.main_window.set_window_title(title);
     }
 
     pub fn grab_mouse(&mut self, enabled: bool) {
@@ -290,22 +247,99 @@ impl Framebuffer {
     }
 
     pub fn key_pressed(&self, key: Key) -> bool {
-        *self.key_pressed.get(&key).unwrap_or(&false)
+        self.main_window.key_pressed(key)
     }
 }
 
 impl Drop for Framebuffer {
     fn drop(&mut self) {
         unsafe {
-            SDL_DestroyTexture(self.texture);
-            SDL_DestroyRenderer(self.renderer);
-            SDL_DestroyWindow(self.window);
+            ManuallyDrop::drop(&mut self.main_window);
             SDL_Quit();
         }
     }
 }
 
-impl<'p> DrawHandle<'p> {
+impl Window {
+    fn new(width: u32, height: u32, title: &'static str) -> Self {
+        let w_int = width as c_int;
+        let h_int = height as c_int;
+        let handle = create_window(w_int, h_int, title);
+        let renderer = create_renderer(handle);
+        let texture = create_texture(renderer, w_int, h_int);
+        let id = get_window_id(handle);
+        let key_pressed = HashMap::with_capacity(240);
+
+        Self {
+            width,
+            height,
+            handle,
+            renderer,
+            texture,
+            _id: id,
+            key_pressed,
+            title,
+        }
+    }
+
+    fn start_render(&self) -> DrawHandle {
+        let mut ptr: *mut u32 = ptr::null_mut();
+        let mut pitch = 0;
+        let num_pixels = (self.width * self.height) as usize;
+
+        let pixels = unsafe {
+            SDL_LockTexture(
+                self.texture,
+                ptr::null(),
+                ptr::addr_of_mut!(ptr).cast(),
+                &mut pitch,
+            );
+
+            debug_assert!(pitch / self.width as i32 == size_of::<u32>() as i32);
+
+            slice::from_raw_parts_mut(ptr, num_pixels)
+        };
+
+        DrawHandle {
+            width: self.width,
+            height: self.height,
+            pixels,
+            window: self,
+        }
+    }
+
+    fn present(&self) {
+        unsafe {
+            SDL_UnlockTexture(self.texture);
+            SDL_RenderCopy(self.renderer, self.texture, ptr::null(), ptr::null());
+            SDL_RenderPresent(self.renderer);
+        }
+    }
+
+    fn key_pressed(&self, key: Key) -> bool {
+        *self.key_pressed.get(&key).unwrap_or(&false)
+    }
+
+    fn set_window_title(&self, title: &str) {
+        let cstr = CString::new(title).expect("Title contains null byte");
+
+        unsafe {
+            SDL_SetWindowTitle(self.handle, cstr.as_ptr());
+        }
+    }
+}
+
+impl Drop for Window {
+    fn drop(&mut self) {
+        unsafe {
+            SDL_DestroyTexture(self.texture);
+            SDL_DestroyRenderer(self.renderer);
+            SDL_DestroyWindow(self.handle);
+        }
+    }
+}
+
+impl<'p, 'w> DrawHandle<'p, 'w> {
     pub fn clear(&mut self) {
         self.pixels.fill(0);
     }
@@ -354,11 +388,11 @@ impl<'p> DrawHandle<'p> {
         let grab = get_mouse_grab();
 
         set_mouse_grab(false);
-        self.fb
-            .set_window_title(&format!("{} [paused]", self.fb.title));
+        self.window
+            .set_window_title(&format!("{} [paused]", self.window.title));
 
         while !poll_key_pressed(unpause_key) {
-            self.fb.present();
+            self.window.present();
             unsafe { SDL_Delay(16) };
         }
 
@@ -366,7 +400,7 @@ impl<'p> DrawHandle<'p> {
     }
 
     pub fn key_pressed(&self, key: Key) -> bool {
-        self.fb.key_pressed(key)
+        self.window.key_pressed(key)
     }
 
     pub fn draw_text(&mut self, pos_x: u32, pos_y: u32, color: u32, text: &str) {
@@ -447,6 +481,10 @@ fn create_texture(renderer: *mut SDL_Renderer, w: c_int, h: c_int) -> *mut SDL_T
     let access = SDL_TextureAccess::SDL_TEXTUREACCESS_STREAMING as c_int;
 
     unsafe { SDL_CreateTexture(renderer, format, access, w, h) }.check_err("create texture")
+}
+
+fn get_window_id(window: *mut SDL_Window) -> u32 {
+    unsafe { SDL_GetWindowID(window) }
 }
 
 fn current_time_seconds() -> f64 {
