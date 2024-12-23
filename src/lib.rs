@@ -4,7 +4,7 @@ pub mod key;
 mod text_renderer;
 
 use std::collections::HashMap;
-use std::ffi::{c_int, CStr, CString};
+use std::ffi::{c_int as int, CStr, CString};
 use std::mem::{size_of, ManuallyDrop, MaybeUninit};
 use std::ptr;
 use std::slice;
@@ -266,8 +266,8 @@ impl Drop for Framebuffer {
 
 impl Window {
     fn new(width: u32, height: u32, title: &'static str) -> Self {
-        let w_int = width as c_int;
-        let h_int = height as c_int;
+        let w_int = width as int;
+        let h_int = height as int;
         let handle = create_window(w_int, h_int, title);
         let renderer = create_renderer(handle);
         let texture = create_texture(renderer, w_int, h_int);
@@ -418,7 +418,7 @@ impl<'p> DrawHandle<'p> {
     }
 }
 
-impl CheckErr for c_int {
+impl CheckErr for int {
     fn check_err(self, action: &'static str) -> Self {
         if self == 0 {
             return self;
@@ -471,9 +471,9 @@ fn init_library() {
     unsafe { SDL_Init(flags) }.check_err("initialize SDL");
 }
 
-fn create_window(w: c_int, h: c_int, title: &'static str) -> *mut SDL_Window {
+fn create_window(w: int, h: int, title: &'static str) -> *mut SDL_Window {
     let cstr = CString::new(title).expect("Title contains null byte");
-    let any_pos = SDL_WINDOWPOS_UNDEFINED_MASK as c_int;
+    let any_pos = SDL_WINDOWPOS_UNDEFINED_MASK as int;
     let flags = 0;
 
     unsafe { SDL_CreateWindow(cstr.as_ptr(), any_pos, any_pos, w, h, flags) }
@@ -486,9 +486,9 @@ fn create_renderer(window: *mut SDL_Window) -> *mut SDL_Renderer {
     unsafe { SDL_CreateRenderer(window, -1, flags) }.check_err("create renderer")
 }
 
-fn create_texture(renderer: *mut SDL_Renderer, w: c_int, h: c_int) -> *mut SDL_Texture {
+fn create_texture(renderer: *mut SDL_Renderer, w: int, h: int) -> *mut SDL_Texture {
     let format = SDL_PixelFormatEnum::SDL_PIXELFORMAT_ARGB8888 as u32;
-    let access = SDL_TextureAccess::SDL_TEXTUREACCESS_STREAMING as c_int;
+    let access = SDL_TextureAccess::SDL_TEXTUREACCESS_STREAMING as int;
 
     unsafe { SDL_CreateTexture(renderer, format, access, w, h) }.check_err("create texture")
 }
