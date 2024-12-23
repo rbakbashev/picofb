@@ -41,7 +41,7 @@ impl MainLoop for State2 {
 
 fn main() {
     let mut fb = Framebuffer::new(300, 200, "Window 1", 30);
-    let window2 = fb.add_window(200, 300, "Window 2");
+    let window2 = Window::new(200, 300, "Window 2");
 
     let mut state1 = State1 {
         color: 0x330000,

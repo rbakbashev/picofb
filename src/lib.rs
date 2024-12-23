@@ -82,10 +82,6 @@ impl Framebuffer {
         }
     }
 
-    pub fn add_window(&self, width: u32, height: u32, title: &'static str) -> Window {
-        Window::new(width, height, title)
-    }
-
     fn poll_events(&mut self, state: &mut impl MainLoop) {
         let mut event_ptr = MaybeUninit::<SDL_Event>::uninit();
 
