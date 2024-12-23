@@ -69,16 +69,29 @@ impl Framebuffer {
     pub fn new(width: u32, height: u32, title: &'static str, update_rate: i16) -> Self {
         init_library();
 
-        let main_window = ManuallyDrop::new(Window::new(width, height, title));
-        let running = true;
-        let dt = 1. / f32::from(update_rate);
-        let fps_buf = FpsCounter::new(32);
+        Self {
+            main_window: ManuallyDrop::new(Window::new(width, height, title)),
+            running: true,
+            dt: 1. / f32::from(update_rate),
+            fps_buf: FpsCounter::new(32),
+        }
+    }
+
+    pub fn with_pos(
+        x: Option<u32>,
+        y: Option<u32>,
+        width: u32,
+        height: u32,
+        title: &'static str,
+        update_rate: i16,
+    ) -> Self {
+        init_library();
 
         Self {
-            main_window,
-            running,
-            dt,
-            fps_buf,
+            main_window: ManuallyDrop::new(Window::with_pos(x, y, width, height, title)),
+            running: true,
+            dt: 1. / f32::from(update_rate),
+            fps_buf: FpsCounter::new(32),
         }
     }
 
@@ -261,10 +274,22 @@ impl Drop for Framebuffer {
 }
 
 impl Window {
-    fn new(width: u32, height: u32, title: &'static str) -> Self {
+    pub fn new(width: u32, height: u32, title: &'static str) -> Self {
+        Self::with_pos(Option::None, Option::None, width, height, title)
+    }
+
+    pub fn with_pos(
+        x: Option<u32>,
+        y: Option<u32>,
+        width: u32,
+        height: u32,
+        title: &'static str,
+    ) -> Self {
+        let x = x.map(|x| x as int);
+        let y = y.map(|y| y as int);
         let w_int = width as int;
         let h_int = height as int;
-        let handle = create_window(w_int, h_int, title);
+        let handle = create_window(x, y, w_int, h_int, title);
         let renderer = create_renderer(handle);
         let texture = create_texture(renderer, w_int, h_int);
         let id = get_window_id(handle);
@@ -467,13 +492,20 @@ fn init_library() {
     unsafe { SDL_Init(flags) }.check_err("initialize SDL");
 }
 
-fn create_window(w: int, h: int, title: &'static str) -> *mut SDL_Window {
+fn create_window(
+    x: Option<int>,
+    y: Option<int>,
+    w: int,
+    h: int,
+    title: &'static str,
+) -> *mut SDL_Window {
     let cstr = CString::new(title).expect("Title contains null byte");
     let any_pos = SDL_WINDOWPOS_UNDEFINED_MASK as int;
+    let x = x.unwrap_or(any_pos);
+    let y = y.unwrap_or(any_pos);
     let flags = 0;
 
-    unsafe { SDL_CreateWindow(cstr.as_ptr(), any_pos, any_pos, w, h, flags) }
-        .check_err("create window")
+    unsafe { SDL_CreateWindow(cstr.as_ptr(), x, y, w, h, flags) }.check_err("create window")
 }
 
 fn create_renderer(window: *mut SDL_Window) -> *mut SDL_Renderer {
