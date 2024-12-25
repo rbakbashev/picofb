@@ -387,6 +387,14 @@ impl<'p> DrawHandle<'p> {
         self.height() as f32
     }
 
+    pub fn grab_mouse(&mut self, enabled: bool) {
+        set_mouse_grab(enabled);
+    }
+
+    pub fn grab_state(&mut self) -> bool {
+        get_mouse_grab()
+    }
+
     pub fn mouse_pos(&self) -> (i32, i32) {
         mouse_pos()
     }
