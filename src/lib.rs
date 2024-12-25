@@ -34,8 +34,6 @@ pub struct Window {
 }
 
 pub struct DrawHandle<'p> {
-    width: u32,
-    height: u32,
     pixels: &'p mut [u32],
     window: &'p Window,
 }
@@ -213,12 +211,12 @@ impl Framebuffer {
 
     #[allow(clippy::cast_precision_loss)]
     pub fn widthf(&self) -> f32 {
-        self.main_window.width as f32
+        self.width() as f32
     }
 
     #[allow(clippy::cast_precision_loss)]
     pub fn heightf(&self) -> f32 {
-        self.main_window.height as f32
+        self.height() as f32
     }
 
     pub fn close(&mut self) {
@@ -312,8 +310,6 @@ impl Window {
         };
 
         DrawHandle {
-            width: self.width,
-            height: self.height,
             pixels,
             window: self,
         }
@@ -356,16 +352,16 @@ impl<'p> DrawHandle<'p> {
     }
 
     pub fn set(&mut self, x: u32, y: u32, color: u32) {
-        if x >= self.width || y >= self.height {
+        if x >= self.width() || y >= self.height() {
             return;
         }
 
-        let idx = y * self.width + x;
+        let idx = y * self.width() + x;
         self.pixels[idx as usize] = color | 0xff_00_00_00;
     }
 
     pub unsafe fn set_unchecked(&mut self, x: u32, y: u32, color: u32) {
-        let idx = y * self.width + x;
+        let idx = y * self.width() + x;
         self.set_unchecked_index(idx as usize, color);
     }
 
@@ -374,21 +370,21 @@ impl<'p> DrawHandle<'p> {
     }
 
     pub fn width(&self) -> u32 {
-        self.width
+        self.window.width
     }
 
     pub fn height(&self) -> u32 {
-        self.height
+        self.window.height
     }
 
     #[allow(clippy::cast_precision_loss)]
     pub fn widthf(&self) -> f32 {
-        self.width as f32
+        self.width() as f32
     }
 
     #[allow(clippy::cast_precision_loss)]
     pub fn heightf(&self) -> f32 {
-        self.height as f32
+        self.height() as f32
     }
 
     pub fn mouse_pos(&self) -> (i32, i32) {
