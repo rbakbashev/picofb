@@ -238,25 +238,11 @@ impl Framebuffer {
     }
 
     pub fn mouse_pos(&self) -> (i32, i32) {
-        let mut x = 0;
-        let mut y = 0;
-
-        unsafe {
-            SDL_GetMouseState(&mut x, &mut y);
-        }
-
-        (x, y)
+        mouse_pos()
     }
 
     pub fn mouse_pos_rel(&self) -> (i32, i32) {
-        let mut x = 0;
-        let mut y = 0;
-
-        unsafe {
-            SDL_GetRelativeMouseState(&mut x, &mut y);
-        }
-
-        (x, y)
+        mouse_pos_rel()
     }
 
     pub fn key_pressed(&self, key: Key) -> bool {
@@ -403,6 +389,14 @@ impl<'p> DrawHandle<'p> {
     #[allow(clippy::cast_precision_loss)]
     pub fn heightf(&self) -> f32 {
         self.height as f32
+    }
+
+    pub fn mouse_pos(&self) -> (i32, i32) {
+        mouse_pos()
+    }
+
+    pub fn mouse_pos_rel(&self) -> (i32, i32) {
+        mouse_pos_rel()
     }
 
     pub fn as_slice(&mut self) -> &mut [u32] {
@@ -574,6 +568,28 @@ fn poll_key_pressed(key: Key) -> bool {
     }
 
     false
+}
+
+fn mouse_pos() -> (i32, i32) {
+    let mut x = 0;
+    let mut y = 0;
+
+    unsafe {
+        SDL_GetMouseState(&mut x, &mut y);
+    }
+
+    (x, y)
+}
+
+fn mouse_pos_rel() -> (i32, i32) {
+    let mut x = 0;
+    let mut y = 0;
+
+    unsafe {
+        SDL_GetRelativeMouseState(&mut x, &mut y);
+    }
+
+    (x, y)
 }
 
 fn set_mouse_grab(enabled: bool) {
